@@ -94,8 +94,7 @@ def central_agent(net_params_queues, exp_queues, model_type):
                         filemode='w',
                         level=logging.INFO)
 
-
-    net=A3C(IS_CENTRAL,model_type,[S_INFO,S_LEN],A_DIM,ACTOR_LR_RATE,CRITIC_LR_RATE)
+    net=A3C(IS_CENTRAL, model_type, [S_INFO,S_LEN], A_DIM, ACTOR_LR_RATE, CRITIC_LR_RATE)
     test_log_file=open(LOG_FILE+'_test','w')
 
     if CRITIC_MODEL is not None and os.path.exists(ACTOR_MODEL):
@@ -228,6 +227,9 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
 
             r_batch.append(reward)
 
+            print("--------Reward batch----------")
+            print(r_batch)
+
             last_bit_rate = bit_rate
 
             # retrieve previous state
@@ -246,13 +248,21 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
             state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
             state[4, :A_DIM] = np.array(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
             state[5, -1] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+            print("--------State----------")
+            print(state)
 
             # compute action probability vector
             action_prob = net.actionSelect(np.reshape(state, (1, S_INFO, S_LEN)))
             action_cumsum = np.cumsum(action_prob)
+            print("--------Action----------")
+            print(action_cumsum)
+
+
             bit_rate = (action_cumsum > np.random.randint(1, RAND_RANGE) / float(RAND_RANGE)).argmax()
             # Note: we need to discretize the probability into 1/RAND_RANGE steps,
             # because there is an intrinsic discrepancy in passing single state and batch states
+            print("--------bit_rate----------")
+            print(bit_rate)
 
             entropy_record.append(3)
 
@@ -274,7 +284,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
                                r_batch[1:],  # control over it
                                end_of_video,
                                {'entropy': entropy_record}])
-                
+
                 epoch+=1
                 if epoch<TOTALEPOCH:
                     actor_net_params=net_params_queue.get()

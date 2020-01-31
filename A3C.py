@@ -127,9 +127,9 @@ if __name__ =='__main__':
 
     discount=0.9
 
+    IS_CENTRAL = True
 
-
-    obj=A2C([S_INFO,S_LEN],ACTION_DIM)
+    obj = A3C(IS_CENTRAL, 2, [S_INFO,S_LEN],ACTION_DIM, actor_lr=1e-4, critic_lr=1e-3)
     timenow=datetime.now()
 
     episode=3000
@@ -144,7 +144,7 @@ if __name__ =='__main__':
         probability=obj.actionSelect(state2Select)
         # return [[1,2,3,4,5,6]]
         # updateNetwork ok
-        obj.updateNetwork(state,action,reward)
+        obj.updateNetwork()
 
 
 
