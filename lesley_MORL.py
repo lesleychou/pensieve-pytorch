@@ -32,6 +32,7 @@ SUMMARY_DIR = './results'
 LOG_FILE = './results/log'
 TEST_LOG_FOLDER = './test_results/'
 TRAIN_TRACES = './data/cooked_traces/'
+REWARD_SIZE = 3
 
 # CRITIC_MODEL= './results/critic.pt'
 # ACTOR_MODEL = './results/actor.pt'
@@ -51,6 +52,7 @@ def testing(epoch, actor_model, log_file):
     os.system('python rl_test.py ' + actor_model)
 
     # append test performance to the log
+    ###### How to change this to the MO-reward to test???
     rewards = []
     test_log_files = os.listdir(TEST_LOG_FOLDER)
     for test_log_file in test_log_files:
@@ -204,10 +206,28 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
 
             # -- linear reward --
             # reward is video quality - rebuffer penalty - smoothness
+            '''  
+            Reward for MORL:
+            '''
+            mo_reward = []
+            # 1. bitrate
+            r_bitrate = VIDEO_BIT_RATE[bit_rate] / M_IN_K
+            mo_reward.append(r_bitrate)
+
+            # 2. rebuffering
+            r_rebuf = rebuf
+            mo_reward.append(r_rebuf)
+
+            # 3. smoothness
+            r_smooth = np.abs(VIDEO_BIT_RATE[bit_rate] - VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            mo_reward.append(r_smooth)
+
+            '''
             reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
                      - REBUF_PENALTY * rebuf \
                      - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
                                                VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            '''
 
             # -- log scale reward --
             # log_bit_rate = np.log(VIDEO_BIT_RATE[bit_rate] / float(VIDEO_BIT_RATE[-1]))
@@ -222,7 +242,8 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
             #          - REBUF_PENALTY * rebuf \
             #          - SMOOTH_PENALTY * np.abs(HD_REWARD[bit_rate] - HD_REWARD[last_bit_rate])
 
-            r_batch.append(reward)
+            r_batch.append(mo_reward)
+            ## where to add weights and multiply with rewards?
 
             print("--------Reward batch----------")
             print(r_batch)
