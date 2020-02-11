@@ -336,6 +336,25 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
                 a_batch.append(action_vec)
 
 
+def generate_w(num_prefence, reward_size, fixed_w=None):
+    if fixed_w is not None:
+        w = np.random.randn(num_prefence-1, reward_size)
+        # normalize as a simplex
+        w = np.abs(w) / np.linalg.norm(w, ord=1, axis=1).reshape(num_prefence-1, 1)
+        return np.concatenate(([fixed_w], w))
+    else:
+        w = np.random.randn(num_prefence, reward_size)
+        w = np.abs(w) / np.linalg.norm(w, ord=1, axis=1).reshape(num_prefence, 1)
+        return w
+
+
+def renew_w(preferences, dim):
+    w = np.random.randn(reward_size)
+    w = np.abs(w) / np.linalg.norm(w, ord=1, axis=0)
+    preferences[dim] = w
+    return preferences
+
+
 def main(arglist):
     time = datetime.now()
     np.random.seed(RANDOM_SEED)

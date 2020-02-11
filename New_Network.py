@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     discount = 0.9
     # what should be the preference shape?????
-    preference = torch.FloatTensor([[0.2, 0.3, 0.5], [0.2, 0.3, 0.5], [0.2, 0.3, 0.5]])
+    weight = torch.FloatTensor([[0.2, 0.3, 0.5], [0.2, 0.3, 0.5], [0.2, 0.3, 0.5]])
 
     timenow = datetime.now()
     c_net = CriticNetwork([S_INFO, S_LEN], ACTION_DIM)  # agent_num=2
@@ -190,12 +190,12 @@ if __name__ == '__main__':
         # reward=torch.randn(1)
         reward = torch.randn(AGENT_NUM)
 
-        action = a_net.forward(npState, preference)
-        t_action = a_net.forward(net_npState, preference)
+        action = a_net.forward(npState, weight)
+        t_action = a_net.forward(net_npState, weight)
 
-        q = c_net.forward(npState, preference)
+        q = c_net.forward(npState, weight)
         print(q)
-        t_q_out = t_c_net.forward(net_npState, preference)
+        t_q_out = t_c_net.forward(net_npState, weight)
 
         updateCriticLoss = loss_func(reward, q)
 
