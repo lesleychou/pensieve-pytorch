@@ -53,11 +53,7 @@ class ActorNetwork(nn.Module):
         nn.init.xavier_normal_(self.cConv1d.weight.data)
         nn.init.constant_(self.cConv1d.bias.data,0.0)
 
-
-
-
-
-    def forward(self,inputs):
+    def forward(self, inputs):
 
         bitrateFcOut=F.relu(self.bitrateFc(inputs[:,0:1,-1]),inplace=True)
 
@@ -77,7 +73,8 @@ class ActorNetwork(nn.Module):
 
         c_flatten=cConv1dOut.view(dConv1dOut.shape[0],-1)
 
-        fullyConnectedInput=torch.cat([bitrateFcOut,bufferFcOut,t_flatten,d_flatten,c_flatten,leftChunkFcOut],1)
+        fullyConnectedInput=torch.cat([bitrateFcOut, bufferFcOut, t_flatten, d_flatten,
+                                       c_flatten, leftChunkFcOut, ],1)
 
         fcOutput=F.relu(self.fullyConnected(fullyConnectedInput),inplace=True)
         
@@ -135,7 +132,7 @@ class CriticNetwork(nn.Module):
         nn.init.constant_(self.cConv1d.bias.data,0.0)
 
 
-    def forward(self,inputs):
+    def forward(self, inputs):
 
         bitrateFcOut=F.relu(self.bitrateFc(inputs[:,0:1,-1]),inplace=True)
 
@@ -154,8 +151,10 @@ class CriticNetwork(nn.Module):
         d_flatten=dConv1dOut.view(dConv1dOut.shape[0],-1)
 
         c_flatten=cConv1dOut.view(dConv1dOut.shape[0],-1)
+        print(bitrateFcOut.shape, "----shape-----")
 
-        fullyConnectedInput=torch.cat([bitrateFcOut,bufferFcOut,t_flatten,d_flatten,c_flatten,leftChunkFcOut],1)
+        fullyConnectedInput=torch.cat([bitrateFcOut, bufferFcOut, t_flatten,
+                                       d_flatten, c_flatten, leftChunkFcOut], 1)
 
         fcOutput=F.relu(self.fullyConnected(fullyConnectedInput),inplace=True)
         

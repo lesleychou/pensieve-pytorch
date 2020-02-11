@@ -1,3 +1,7 @@
+# This is based on A3C.py
+# import agent form MORL_agent
+#
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,9 +29,14 @@ class A3C(object):
         self.actorNetwork = ActorNetwork(self.s_dim, self.a_dim).double().to(self.device)
         '''
         Original ActorNetwork
-        input: stat-dim, action_dim
+        input: state_dim, action_dim
         a_net = ActorNetwork()
         action=a_net.forward(npState)
+        
+        Now:
+        input: input_size, output_size, reward_size
+        output(policy)
+        forward(state, preference)
         '''
 
         if self.is_central:
@@ -88,12 +97,35 @@ class A3C(object):
 
         # use the feature of accumulating gradient in pytorch
 
+    ''' 
+    ##### Pensieve code ####
+    
     def actionSelect(self, stateInputs):
         stateInputs = torch.from_numpy(stateInputs).to(self.device)
         if not self.is_central:
             with torch.no_grad():
                 probability = self.actorNetwork.forward(stateInputs)
                 return probability.cpu().numpy()
+    '''
+
+    def get_action(self, state, preference):
+        state = torch.Tensor(state).to(self.device)
+        state = state.float()
+        w = torch.Tensor(preference).to(self.device)
+        w = w.float()
+        if not self.is_central:
+            policy, value = self.model(state, w)
+            policy = F.softmax(policy, dim=-1).data.cpu().numpy()
+
+            action = self.random_choice_prob_index(policy)
+
+            return action
+
+    @staticmethod
+    def random_choice_prob_index(p, axis=1):
+        r = np.expand_dims(np.random.rand(p.shape[1 - axis]), axis=axis)
+        return (p.cumsum(axis=axis) > r).argmax(axis=axis)
+
 
     def hardUpdateActorNetwork(self, actor_net_params):
         for target_param, source_param in zip(self.actorNetwork.parameters(), actor_net_params):

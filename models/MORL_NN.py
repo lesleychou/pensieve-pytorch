@@ -1,3 +1,5 @@
+# This is from Runzhe_MORL/multimario/model.py
+
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
@@ -14,9 +16,9 @@ class Flatten(nn.Module):
         return input.view(input.size(0), -1)
 
 
-class ActorNetwork(nn.Module):
+class NaiveMoCnnActorNetwork(nn.Module):
     def __init__(self, input_size, output_size, reward_size):
-        super(NaiveMoCnnActorCriticNetwork, self).__init__()
+        super(NaiveMoCnnActorNetwork, self).__init__()
         linear = nn.Linear
         self.feature = nn.Sequential(
             nn.Conv2d(
@@ -65,9 +67,9 @@ class ActorNetwork(nn.Module):
         return policy
 
 
-class CriticNetwork(nn.Module):
+class NaiveMoCnnCriticNetwork(nn.Module):
     def __init__(self, input_size, output_size, reward_size):
-        super(NaiveMoCnnActorCriticNetwork, self).__init__()
+        super(NaiveMoCnnCriticNetwork, self).__init__()
         linear = nn.Linear
         self.feature = nn.Sequential(
             nn.Conv2d(
