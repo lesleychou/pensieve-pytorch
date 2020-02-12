@@ -9,7 +9,7 @@ import multiprocessing as mp
 import env
 import load_trace
 import torch
-from A3C import A3C
+from MORL_A3C import A3C
 from datetime import datetime
 import time
 
@@ -36,6 +36,7 @@ LOG_FILE = './results/log'
 TEST_LOG_FOLDER = './test_results/'
 TRAIN_TRACES = './data/cooked_traces/'
 REWARD_SIZE = 3
+NUM_Preferences = 16
 
 # CRITIC_MODEL= './results/critic.pt'
 # ACTOR_MODEL = './results/actor.pt'
@@ -191,9 +192,11 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
         a_batch = [action_vec]
         r_batch = []
         entropy_record = []
+        fixed_w = None
+        explore_w = generate_w(NUM_Preferences, REWARD_SIZE, fixed_w)
+
 
         time_stamp = 0
-
         epoch = 0
         while True:  # experience video streaming forever
 
@@ -245,7 +248,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
             #          - REBUF_PENALTY * rebuf \
             #          - SMOOTH_PENALTY * np.abs(HD_REWARD[bit_rate] - HD_REWARD[last_bit_rate])
 
-            r_batch.append(mo_reward)
+            r_batch.append(explore_w.dot(mo_reward))
             ## where to add weights and multiply with rewards?
 
             print("--------Reward batch----------")
@@ -273,7 +276,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
             print(state)
 
             # compute action probability vector
-            action_prob = net.actionSelect(np.reshape(state, (1, S_INFO, S_LEN)))
+            action_prob = net.actionSelect(np.reshape(state, (1, S_INFO, S_LEN)), explore_w)
             action_cumsum = np.cumsum(action_prob)
             print("--------Action----------")
             print(action_cumsum)
@@ -349,7 +352,7 @@ def generate_w(num_prefence, reward_size, fixed_w=None):
 
 
 def renew_w(preferences, dim):
-    w = np.random.randn(reward_size)
+    w = np.random.randn(REWARD_SIZE)
     w = np.abs(w) / np.linalg.norm(w, ord=1, axis=0)
     preferences[dim] = w
     return preferences
