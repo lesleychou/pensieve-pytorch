@@ -10,7 +10,6 @@ from A3C import A3C
 from datetime import datetime
 import time
 
-
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
 A_DIM = 6
@@ -19,7 +18,7 @@ CRITIC_LR_RATE = 0.001
 NUM_AGENTS = 4
 TRAIN_SEQ_LEN = 100  # take as a train batch
 MODEL_SAVE_INTERVAL = 100
-VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 HD_REWARD = [1, 2, 3, 12, 15, 20]
 BUFFER_NORM_FACTOR = 10.0
 CHUNK_TIL_VIDEO_END_CAP = 48.0
@@ -34,22 +33,23 @@ LOG_FILE = './results/log'
 TEST_LOG_FOLDER = './test_results/'
 TRAIN_TRACES = './data/cooked_traces/'
 
-#CRITIC_MODEL= './results/critic.pt'
-#ACTOR_MODEL = './results/actor.pt'
+# CRITIC_MODEL= './results/critic.pt'
+# ACTOR_MODEL = './results/actor.pt'
 CRITIC_MODEL = None
 
-TOTALEPOCH=30000
-IS_CENTRAL=True
-NO_CENTRAL=False
+TOTALEPOCH = 30000
+IS_CENTRAL = True
+NO_CENTRAL = False
 
-def testing(epoch, actor_model,log_file):
+
+def testing(epoch, actor_model, log_file):
     # clean up the test results folder
     os.system('rm -r ' + TEST_LOG_FOLDER)
     os.system('mkdir ' + TEST_LOG_FOLDER)
-    
+
     # run test script
-    os.system('python rl_test.py '+actor_model)
-    
+    os.system('python rl_test_random_weights.py ' + actor_model)
+
     # append test performance to the log
     rewards = []
     test_log_files = os.listdir(TEST_LOG_FOLDER)
@@ -86,7 +86,7 @@ def testing(epoch, actor_model,log_file):
 def central_agent(net_params_queues, exp_queues, model_type):
     torch.set_num_threads(1)
 
-    timenow=datetime.now()
+    timenow = datetime.now()
     assert len(net_params_queues) == NUM_AGENTS
     assert len(exp_queues) == NUM_AGENTS
 
@@ -94,21 +94,19 @@ def central_agent(net_params_queues, exp_queues, model_type):
                         filemode='w',
                         level=logging.INFO)
 
-
-    net=A3C(IS_CENTRAL,model_type,[S_INFO,S_LEN],A_DIM,ACTOR_LR_RATE,CRITIC_LR_RATE)
-    test_log_file=open(LOG_FILE+'_test','w')
+    net = A3C(IS_CENTRAL, model_type, [S_INFO, S_LEN], A_DIM, ACTOR_LR_RATE, CRITIC_LR_RATE)
+    test_log_file = open(LOG_FILE + '_test', 'w')
 
     if CRITIC_MODEL is not None and os.path.exists(ACTOR_MODEL):
         net.actorNetwork.load_state_dict(torch.load(ACTOR_MODEL))
         net.criticNetwork.load_state_dict(torch.load(CRITIC_MODEL))
 
-
     for epoch in range(TOTALEPOCH):
         # synchronize the network parameters of work agent
-        actor_net_params=net.getActorParam()
-        #critic_net_params=net.getCriticParam()
+        actor_net_params = net.getActorParam()
+        # critic_net_params=net.getCriticParam()
         for i in range(NUM_AGENTS):
-            #net_params_queues[i].put([actor_net_params,critic_net_params])
+            # net_params_queues[i].put([actor_net_params,critic_net_params])
             net_params_queues[i].put(actor_net_params)
             # Note: this is synchronous version of the parallel training,
             # which is easier to understand and probe. The framework can be
@@ -124,7 +122,7 @@ def central_agent(net_params_queues, exp_queues, model_type):
         total_reward = 0.0
         total_td_loss = 0.0
         total_entropy = 0.0
-        total_agents = 0.0 
+        total_agents = 0.0
 
         # assemble experiences from the agents
         actor_gradient_batch = []
@@ -133,9 +131,7 @@ def central_agent(net_params_queues, exp_queues, model_type):
         for i in range(NUM_AGENTS):
             s_batch, a_batch, r_batch, terminal, info = exp_queues[i].get()
 
-
-            net.getNetworkGradient(s_batch,a_batch,r_batch,terminal=terminal)
-
+            net.getNetworkGradient(s_batch, a_batch, r_batch, terminal=terminal)
 
             total_reward += np.sum(r_batch)
             total_batch_len += len(r_batch)
@@ -145,22 +141,21 @@ def central_agent(net_params_queues, exp_queues, model_type):
         # log training information
         net.updateNetwork()
 
-        avg_reward = total_reward  / total_agents
+        avg_reward = total_reward / total_agents
         avg_entropy = total_entropy / total_batch_len
 
         logging.info('Epoch: ' + str(epoch) +
                      ' Avg_reward: ' + str(avg_reward) +
                      ' Avg_entropy: ' + str(avg_entropy))
 
-        
-        if (epoch+1) % MODEL_SAVE_INTERVAL == 0:
+        if (epoch + 1) % MODEL_SAVE_INTERVAL == 0:
             # Save the neural net parameters to disk.
-            print("\nTrain ep:"+str(epoch+1)+",time use :"+str((datetime.now()-timenow).seconds)+"s\n")
-            timenow=datetime.now()
-            torch.save(net.actorNetwork.state_dict(),SUMMARY_DIR+"/actor.pt")
-            if model_type<2:
-                torch.save(net.criticNetwork.state_dict(),SUMMARY_DIR+"/critic.pt")
-            testing(epoch+1,SUMMARY_DIR+"/actor.pt",test_log_file)
+            print("\nTrain ep:" + str(epoch + 1) + ",time use :" + str((datetime.now() - timenow).seconds) + "s\n")
+            timenow = datetime.now()
+            torch.save(net.actorNetwork.state_dict(), SUMMARY_DIR + "/actor.pt")
+            if model_type < 2:
+                torch.save(net.criticNetwork.state_dict(), SUMMARY_DIR + "/critic.pt")
+            testing(epoch + 1, SUMMARY_DIR + "/actor.pt", test_log_file)
 
 
 def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue, model_type):
@@ -170,23 +165,24 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
                               all_cooked_bw=all_cooked_bw,
                               random_seed=agent_id)
 
-    with open(LOG_FILE+'_agent_'+str(agent_id),'w') as log_file:
+    with open(LOG_FILE + '_agent_' + str(agent_id), 'w') as log_file:
 
-        net=A3C(NO_CENTRAL,model_type,[S_INFO,S_LEN],A_DIM,ACTOR_LR_RATE,CRITIC_LR_RATE)
+        net = A3C(NO_CENTRAL, model_type, [S_INFO, S_LEN], A_DIM, ACTOR_LR_RATE, CRITIC_LR_RATE)
 
         # initial synchronization of the network parameters from the coordinator
 
         time_stamp = 0
+        weights = np.array([0.2, 0.3, 0.5])
+
         for epoch in range(TOTALEPOCH):
-            actor_net_params= net_params_queue.get()
+            actor_net_params = net_params_queue.get()
             net.hardUpdateActorNetwork(actor_net_params)
-            last_bit_rate = DEFAULT_QUALITY
             bit_rate = DEFAULT_QUALITY
             s_batch = []
             a_batch = []
             r_batch = []
             entropy_record = []
-            state = torch.zeros((1,S_INFO,S_LEN))
+            state = torch.zeros((1, S_INFO, S_LEN))
 
             # the action is from the last decision
             # this is to make the framework similar to the real
@@ -203,14 +199,14 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
 
                 state = state.clone().detach()
 
-                state = torch.roll(state, -1,dims=-1)
+                state = torch.roll(state, -1, dims=-1)
 
-                state[0,0, -1] = VIDEO_BIT_RATE[bit_rate] / float(np.max(VIDEO_BIT_RATE))  # last quality
-                state[0,1, -1] = buffer_size / BUFFER_NORM_FACTOR  # 10 sec
-                state[0,2, -1] = float(video_chunk_size) / float(delay) / M_IN_K  # kilo byte / ms
-                state[0,3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
-                state[0,4, :A_DIM] = torch.tensor(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
-                state[0,5, -1] = min(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+                state[0, 0, -1] = VIDEO_BIT_RATE[bit_rate] / float(np.max(VIDEO_BIT_RATE))  # last quality
+                state[0, 1, -1] = buffer_size / BUFFER_NORM_FACTOR  # 10 sec
+                state[0, 2, -1] = float(video_chunk_size) / float(delay) / M_IN_K  # kilo byte / ms
+                state[0, 3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
+                state[0, 4, :A_DIM] = torch.tensor(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
+                state[0, 5, -1] = min(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
 
                 bit_rate = net.actionSelect(state)
                 # Note: we need to discretize the probability into 1/RAND_RANGE steps,
@@ -221,10 +217,13 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
                 end_of_video, video_chunk_remain = \
                     net_env.get_video_chunk(bit_rate)
 
-                reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
-                         - REBUF_PENALTY * rebuf \
-                         - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
-                                                   VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+                w1 = weights[0]
+                w2 = weights[1]
+                w3 = weights[2]
+                reward = w1 * VIDEO_BIT_RATE[bit_rate] / M_IN_K \
+                         - w2 * REBUF_PENALTY * rebuf \
+                         - w3 * SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+                                                        VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
 
                 s_batch.append(state)
                 a_batch.append(bit_rate)
@@ -241,23 +240,25 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue,
                                str(reward) + '\n')
                 log_file.flush()
 
-
-
             exp_queue.put([s_batch,  # ignore the first chuck
                            a_batch,  # since we don't have the
                            r_batch,  # control over it
                            end_of_video,
                            {'entropy': entropy_record}])
-            
+
+            if end_of_video:
+                # This assumes the end of the video is the end of the epoch.
+                # But that is no longer true.
+                weights = np.random.randn(3)  # Normalization
+                weights = np.abs(weights) / np.linalg.norm(weights, ord=1)
+
             log_file.write('\n')  # so that in the log we know where video ends
 
 
 def main(arglist):
-
-    time=datetime.now()
+    time = datetime.now()
     np.random.seed(RANDOM_SEED)
     torch.manual_seed(RANDOM_SEED)
-
 
     assert len(VIDEO_BIT_RATE) == A_DIM
 
@@ -275,7 +276,7 @@ def main(arglist):
     # create a coordinator and multiple agent processes
     # (note: threading is not desirable due to python GIL)
     coordinator = mp.Process(target=central_agent,
-                             args=(net_params_queues, exp_queues,arglist.model_type))
+                             args=(net_params_queues, exp_queues, arglist.model_type))
     coordinator.start()
 
     all_cooked_time, all_cooked_bw, _ = load_trace.load_trace(TRAIN_TRACES)
@@ -284,7 +285,7 @@ def main(arglist):
         agents.append(mp.Process(target=agent,
                                  args=(i, all_cooked_time, all_cooked_bw,
                                        net_params_queues[i],
-                                       exp_queues[i],arglist.model_type)))
+                                       exp_queues[i], arglist.model_type)))
     for i in range(NUM_AGENTS):
         agents[i].start()
 
@@ -293,13 +294,15 @@ def main(arglist):
     for i in range(NUM_AGENTS):
         agents[i].join()
 
-    print(str(datetime.now()-time))
+    print(str(datetime.now() - time))
+
 
 def parse_args():
-    parser=argparse.ArgumentParser("Pensieve")
-    parser.add_argument("--model_type",type=int,default=0,help="Refer to README for the meaning of this parameter")
+    parser = argparse.ArgumentParser("Pensieve")
+    parser.add_argument("--model_type", type=int, default=0, help="Refer to README for the meaning of this parameter")
     return parser.parse_args()
 
+
 if __name__ == '__main__':
-    arglist=parse_args()
+    arglist = parse_args()
     main(arglist)
